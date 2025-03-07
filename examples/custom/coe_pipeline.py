@@ -28,6 +28,7 @@ class Pipeline:
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
         MODEL = "llama3.1"
+
         if "user" in body:
             print("######################################")
             print(f'# User: {body["user"]["name"]} ({body["user"]["id"]})')
@@ -41,20 +42,14 @@ class Pipeline:
                 stream=True,
             )
             r.raise_for_status()
-            if body.get("stream", True):  # Check if 'stream' exists and is True
-                for line in r.iter_lines():
-                    if line:
-                        json_line = line.decode('utf-8')
-                        response_data = json.loads(json_line)
-                        # Yield the content as it's received
-                        content = response_data.get('message', {}).get('content', '')
-                        if content:
-                            yield content  # Stream the content
-            else:
-                yield "Not in streaming mode."
-        except requests.RequestException as req_err:
-            yield f"Request Error: {req_err}"
-        except json.JSONDecodeError as json_err:
-            yield f"JSON Decode Error: {json_err}"
+
+            for line in r.iter_lines():
+                if line:
+                    json_line = line.decode('utf-8')
+                    response_data = json.loads(json_line)
+                    # Yield the content as it's received
+                    content = response_data.get('message', {}).get('content', '')
+                    if content:
+                        yield content  # Stream the content
         except Exception as e:
             yield f"Error: {e}"
