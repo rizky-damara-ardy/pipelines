@@ -25,11 +25,6 @@ class Pipeline:
         pass
 
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator[str, None, None]]:
-        print(f'# user_message cek: {user_message}')
-        print(f'# model_id cek: {model_id}')
-        print(f'# messages cek: {messages}')
-        print(f'# body cek: {body}')
-
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
         MODEL = "llama3.1"
