@@ -25,31 +25,33 @@ class Pipeline:
         pass
 
     def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator[str, None, None]]:
-
-
         print(f"pipe:{__name__}")
+        print(f'#xxxxxxxxxxxxx# user_message cek: {user_message}')
+        print(f'#xxxxxxxxxxxxx# model_id cek: {model_id}')
+        print(f'#xxxxxxxxxxxxx# messages cek: {messages}')
+        print(f'#xxxxxxxxxxxxx# body cek: {body}')
+
+
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
-        MODEL = "llama3.1"
 
+        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, "llama3.1", True)
+
+    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, stream: bool) -> Union[str, Generator[str, None, None]]:
+        OLLAMA_BASE_URL = base_url
+
+        # Log user details if present
         if "user" in body:
-            print("######################################")
-            print(f'# User: {body["user"]["name"]} ({body["user"]["id"]})')
-            print(f"# Message: {user_message}")
-            print("######################################")
-
         try:
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
-                json={**body, "model": MODEL},
-                stream=True,
+                json={**body, "model": model},
+                stream=stream,
             )
             r.raise_for_status()
-
             for line in r.iter_lines():
                 if line:
                     json_line = line.decode('utf-8')
                     response_data = json.loads(json_line)
-                    # Yield the content as it's received
                     content = response_data.get('message', {}).get('content', '')
                     if content:
                         yield content  # Stream the content
