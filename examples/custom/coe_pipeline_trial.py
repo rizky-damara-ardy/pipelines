@@ -1,4 +1,4 @@
-from typing import List, Union, Generator, Iterator
+from typing import List, Union, Generator, Iterator, Any
 from schemas import OpenAIChatMessage
 import requests
 import json
@@ -24,23 +24,49 @@ class Pipeline:
         print(f"on_shutdown:{__name__}")
         pass
 
-    def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Union[str, Generator[str, None, None]]:
+    def pipe(self, user_message: str, model_id: str, messages: List[dict], body: dict) -> Generator[str, None, None]:
         print(f"pipe:{__name__}")
-        print(f'#xxxxxxxxxxxxx# user_message cek: {user_message}')
-        print(f'#xxxxxxxxxxxxx# model_id cek: {model_id}')
-        print(f'#xxxxxxxxxxxxx# messages cek: {messages}')
-        print(f'#xxxxxxxxxxxxx# body cek: {body}')
-
-
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
-        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, "llama3.1", True)
+        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, "llama3.1:latest",
+                                                          'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it',
+                                                          False)
 
-    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, stream: bool) -> Union[str, Generator[str, None, None]]:
+        # Retrieve the first result from the generator
+        category = next(category_generator)
+
+        category_lower = category.lower() if isinstance(category, str) else category
+
+        if "knowledge" in category_lower:
+            model = "llama3.1:latest"
+            prompt = 'You are knowledge base assistant, answer user asking'
+            stream = True
+            yield "knowledge-"+model+": "
+        elif "prediction" in category_lower:
+            model = "deepseek-r1:14b"
+            prompt = 'You are prediction base assistant, answer user asking'
+            stream = True
+            yield "prediction-"+model+": "
+        elif "code" in category_lower:
+            model = "deepseek-coder-v2:16b"
+            prompt = 'You are code base assistant, answer user asking'
+            stream = True
+            yield "code-"+model+": "
+        else:
+            model = "llama3.1:latest"
+            prompt = 'You are knowledge base assistant, answer user asking'
+            stream = True
+            yield "general-"+model+": "
+        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,
+                                                prompt,
+                                                stream)
+
+    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool) -> \
+    Generator[str | Any, Any, None]:
         OLLAMA_BASE_URL = base_url
 
-        # Log user details if present
-        if "user" in body:
+        body['messages'][0]['content'] =system_prompt
+
         try:
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
@@ -48,6 +74,7 @@ class Pipeline:
                 stream=stream,
             )
             r.raise_for_status()
+
             for line in r.iter_lines():
                 if line:
                     json_line = line.decode('utf-8')
