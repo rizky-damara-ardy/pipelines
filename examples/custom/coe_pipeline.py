@@ -28,9 +28,14 @@ class Pipeline:
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
-        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, "llama3.1:latest",
-                                                          'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it',
-                                                          False)
+        #for define category
+        model = "llama3.1:latest"
+        prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it'
+        stream = False
+        options_str = '{"temperature": 0.1,"context_length": 8192}'
+        options_dict = json.loads(options_str)
+
+        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
 
         # Retrieve the first result from the generator
         category = next(category_generator)
@@ -41,27 +46,37 @@ class Pipeline:
             model = "llama3.1:latest"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
+            options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
+            options_dict = json.loads(options_str)
+
             yield "knowledge-"+model+": "
         elif "prediction" in category_lower:
             model = "deepseek-r1:14b"
             prompt = 'You are prediction base assistant, answer user asking'
             stream = True
+            options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
+            options_dict = json.loads(options_str)
+
             yield "prediction-"+model+": "
         elif "code" in category_lower:
             model = "deepseek-coder-v2:16b"
             prompt = 'You are code base assistant, answer user asking'
             stream = True
+            options_str = '{"num_ctx": 8192}'
+            options_dict = json.loads(options_str)
+
             yield "code-"+model+": "
         else:
             model = "llama3.1:latest"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
-            yield "general-"+model+": "
-        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,
-                                                prompt,
-                                                stream)
+            options_str = '{"num_ctx": 8192}'
+            options_dict = json.loads(options_str)
 
-    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool) -> \
+            yield "general-"+model+": "
+        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+
+    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict) -> \
     Generator[str | Any, Any, None]:
         OLLAMA_BASE_URL = base_url
 
@@ -70,8 +85,9 @@ class Pipeline:
         try:
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
-                json={**body, "model": model},
-                stream=stream,
+                json={**body, "model": model,
+                      "stream": stream,
+                      "options": option},
             )
             r.raise_for_status()
 

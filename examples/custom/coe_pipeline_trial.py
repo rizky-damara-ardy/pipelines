@@ -32,8 +32,7 @@ class Pipeline:
         model = "llama3.1:latest"
         prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it'
         stream = False
-        options_str = '{"temperature": 0.0,"context_length": 8192}'
-        # Convert the string to a dictionary
+        options_str = '{"temperature": 0.1,"context_length": 8192}'
         options_dict = json.loads(options_str)
 
         category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
@@ -47,8 +46,7 @@ class Pipeline:
             model = "llama3.1:latest"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
-            options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "context_length": 8192}'
-            # Convert the string to a dictionary
+            options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "knowledge-"+model+": "
@@ -56,8 +54,7 @@ class Pipeline:
             model = "deepseek-r1:14b"
             prompt = 'You are prediction base assistant, answer user asking'
             stream = True
-            options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "context_length": 8192}'
-            # Convert the string to a dictionary
+            options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "prediction-"+model+": "
@@ -65,8 +62,7 @@ class Pipeline:
             model = "deepseek-coder-v2:16b"
             prompt = 'You are code base assistant, answer user asking'
             stream = True
-            options_str = '{"temperature": 0.8, "context_length": 8192}'
-            # Convert the string to a dictionary
+            options_str = '{"num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "code-"+model+": "
@@ -74,8 +70,7 @@ class Pipeline:
             model = "llama3.1:latest"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
-            options_str = '{"temperature": 0.8, "context_length": 8192}'
-            # Convert the string to a dictionary
+            options_str = '{"num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "general-"+model+": "
