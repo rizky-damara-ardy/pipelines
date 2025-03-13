@@ -29,7 +29,7 @@ class Pipeline:
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
         #for define category
-        model = "llama3.1:latest"
+        model = "qwen2.5:14b-instruct-q4_K_M"
         prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it'
         stream = False
         options_str = '{"temperature": 0.1,"context_length": 8192}'
@@ -43,7 +43,7 @@ class Pipeline:
         category_lower = category.lower() if isinstance(category, str) else category
 
         if "knowledge" in category_lower:
-            model = "llama3.1:latest"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
             options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
@@ -67,7 +67,7 @@ class Pipeline:
 
             yield "code-"+model+": "
         else:
-            model = "llama3.1:latest"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
             options_str = '{"num_ctx": 8192}'
