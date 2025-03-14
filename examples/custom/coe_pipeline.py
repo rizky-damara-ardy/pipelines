@@ -29,7 +29,7 @@ class Pipeline:
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
         #for define category
-        model = "llama3.1:latest"
+        model = "qwen2.5:14b-instruct-q4_K_M"
         prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it'
         stream = False
         options_str = '{"temperature": 0.1,"context_length": 8192}'
@@ -43,7 +43,7 @@ class Pipeline:
         category_lower = category.lower() if isinstance(category, str) else category
 
         if "knowledge" in category_lower:
-            model = "llama3.1:latest"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
             options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
@@ -67,7 +67,7 @@ class Pipeline:
 
             yield "code-"+model+": "
         else:
-            model = "llama3.1:latest"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
             options_str = '{"num_ctx": 8192}'
@@ -81,13 +81,12 @@ class Pipeline:
         OLLAMA_BASE_URL = base_url
 
         body['messages'][0]['content'] =system_prompt
+        payload = {**body, "model": model, "stream": stream, "options": option}
 
         try:
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
-                json={**body, "model": model,
-                      "stream": stream,
-                      "options": option},
+                json=self.adjust_json(payload),
             )
             r.raise_for_status()
 
@@ -100,3 +99,57 @@ class Pipeline:
                         yield content  # Stream the content
         except Exception as e:
             yield f"Error: {e}"
+
+    def adjust_json(self,owebui_json):
+        # Preparing the new structure
+        new_json = {
+            "model": owebui_json["model"],
+            "stream": owebui_json["stream"],
+            "user": owebui_json["user"],
+            "messages": []
+        }
+        if "options" in owebui_json:
+            new_json["options"] = owebui_json["options"]
+
+        # Function to recursively process messages
+        def process_messages(messages):
+            for message in messages:
+                if message["role"] == "user":
+                    # Handle content as a list of structured items
+                    if isinstance(message["content"], list):
+                        for item in message["content"]:
+                            if item["type"] == "text":
+                                text_message = {
+                                    "role": "user",
+                                    "content": item["text"]
+                                }
+                                new_json["messages"].append(text_message)
+                            elif item["type"] == "image_url":
+                                image_data = item["image_url"]["url"]
+                                base64_string = image_data.split(",")[1]
+                                image_message = {
+                                    "role": "user",
+                                    "images": [base64_string]
+                                }
+                                new_json["messages"].append(image_message)
+                    else:
+                        # If it's a plain string
+                        user_message = {
+                            "role": "user",
+                            "content": message["content"]
+                        }
+                        new_json["messages"].append(user_message)
+                else:
+                    # Append other roles (system, assistant) as is
+                    new_json["messages"].append(message)
+
+        # Process top-level messages
+        if "messages" in owebui_json and isinstance(owebui_json["messages"], list):
+            # If top-level messages are provided, process them
+            for top_message in owebui_json["messages"]:
+                if isinstance(top_message, dict) and "messages" in top_message:
+                    process_messages(top_message["messages"])
+                else:
+                    process_messages([top_message])  # Handle messages that are not nested
+
+        return new_json
