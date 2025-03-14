@@ -81,14 +81,14 @@ class Pipeline:
         OLLAMA_BASE_URL = base_url
 
         body['messages'][0]['content'] =system_prompt
+        payload = {**body, "model": model, "stream": stream, "options": option}
 
         try:
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
-                json={**body, "model": model,
-                      "stream": stream,
-                      "options": option},
+                json=payload,
             )
+            print("XXX JSON XXX:",payload)
             r.raise_for_status()
 
             for line in r.iter_lines():
