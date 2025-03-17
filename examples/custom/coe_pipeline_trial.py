@@ -30,7 +30,7 @@ class Pipeline:
 
         #for define category
         model = "qwen2.5:14b-instruct-q4_K_M"
-        prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, answer must only "prediction" or "knowledge" or "code" just it'
+        prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, ask image answer must only "prediction" or "knowledge" or "code" or "image" just it'
         stream = False
         options_str = '{"temperature": 0.1,"context_length": 8192}'
         options_dict = json.loads(options_str)
@@ -66,6 +66,14 @@ class Pipeline:
             options_dict = json.loads(options_str)
 
             yield "code-"+model+": "
+        elif "image" in category_lower:
+            model = "llava:34b"
+            prompt = 'You are image base assistant, answer user asking'
+            stream = True
+            options_str = '{"temperature": 0.5}'
+            options_dict = json.loads(options_str)
+
+            yield "image-" + model + ": "
         else:
             model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
@@ -84,8 +92,6 @@ class Pipeline:
         payload = {**body, "model": model, "stream": stream, "options": option}
 
         try:
-            print("XXX JSON XXX:",payload)
-            print("YYY JSON YYY:",self.adjust_json(payload),)
             r = requests.post(
                 url=f"{OLLAMA_BASE_URL}/api/chat",
                 json=self.adjust_json(payload),
