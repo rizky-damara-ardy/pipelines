@@ -28,7 +28,6 @@ class Pipeline:
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
-
         if body['messages'][0]['content'].startswith('### Task'):
             # for define category
             model = "qwen2.5:3b-instruct-q4_K_M"
@@ -51,7 +50,6 @@ class Pipeline:
 
             # Retrieve the first result from the generator
             category = next(category_generator)
-
             category_lower = category.lower() if isinstance(category, str) else category
 
             if "pengetahuan" in category_lower:
