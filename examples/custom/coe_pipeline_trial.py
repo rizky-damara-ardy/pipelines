@@ -37,7 +37,7 @@ class Pipeline:
 
         if body['messages'][0]['content'].startswith('### Task'):
             # for define category
-            model = "qwen2.5:3b-instruct-q4_K_M"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = ""
             stream = False
             options_str = '{"temperature": 0.1,"context_length": 8192}'
@@ -47,7 +47,7 @@ class Pipeline:
                                            stream, options_dict)
         else:
             #for define category
-            model = "qwen2.5:3b-instruct-q4_K_M"
+            model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = "Tentukan apakah permintaan ini dari pengguna merupakan meminta prediksi atau meminta pengetahuan atau meminta kode atau meminta gambar, jawabannya harus hanya 'prediksi' atau 'pengetahuan' atau 'kode' atau 'gambar' hanya itu."
             stream = False
             options_str = '{"temperature": 0.1,"context_length": 8192}'
@@ -111,7 +111,10 @@ class Pipeline:
 
         if system_prompt != "":
             if body['messages'][0]['role'] == 'system':
-                body['messages'][0]['content'] = system_prompt
+                if body['messages'][0]['content'].startswith(' ### Task'):
+                    body['messages'][0]['content'] = system_prompt+", "+body['messages'][0]['content']
+                else:
+                    body['messages'][0]['content'] = system_prompt
             else:
                 body['messages'].insert(0, {'role': 'system', 'content': system_prompt})
 
