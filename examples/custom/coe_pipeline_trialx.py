@@ -2,7 +2,7 @@ from typing import List, Union, Generator, Iterator, Any
 from schemas import OpenAIChatMessage
 import requests
 import json
-
+import re
 
 class Pipeline:
     def __init__(self):
@@ -29,47 +29,52 @@ class Pipeline:
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
         #for define category
-        model = "qwen2.5:3b-instruct-q4_K_M"
-        prompt = "Tentukan apakah permintaan ini dari pengguna merupakan meminta prediksi atau meminta pengetahuan atau meminta kode atau meminta gambar, jawabannya harus hanya 'prediksi' atau 'pengetahuan' atau 'kode' atau 'gambar' hanya itu."
+        model = "qwen2.5:14b-instruct-q4_K_M"
+        prompt = 'Define this prompt from user is ask prediction or ask knowledge or ask code, ask image answer must only "prediction" or "knowledge" or "code" or "image" just it'
         stream = False
+        is_cat = True
         options_str = '{"temperature": 0.1,"context_length": 8192}'
         options_dict = json.loads(options_str)
 
-        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict,is_cat)
 
         # Retrieve the first result from the generator
         category = next(category_generator)
 
         category_lower = category.lower() if isinstance(category, str) else category
 
-        if "pengetahuan" in category_lower:
+        if "knowledge" in category_lower:
             model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
+            is_cat = False
             options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "knowledge-"+model+": "
-        elif "prediksi" in category_lower:
+        elif "prediction" in category_lower:
             model = "deepseek-r1:14b"
             prompt = 'You are prediction base assistant, answer user asking'
             stream = True
+            is_cat = False
             options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "prediction-"+model+": "
-        elif "kode" in category_lower:
+        elif "code" in category_lower:
             model = "deepseek-coder-v2:16b"
             prompt = 'You are code base assistant, answer user asking'
             stream = True
+            is_cat = False
             options_str = '{"num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "code-"+model+": "
-        elif "gambar" in category_lower:
-            model = "gemma3:27b"
+        elif "image" in category_lower:
+            model = "llava:34b"
             prompt = 'You are image base assistant, answer user asking'
             stream = True
+            is_cat = False
             options_str = '{"temperature": 0.5}'
             options_dict = json.loads(options_str)
 
@@ -78,24 +83,29 @@ class Pipeline:
             model = "qwen2.5:14b-instruct-q4_K_M"
             prompt = 'You are knowledge base assistant, answer user asking'
             stream = True
+            is_cat = False
             options_str = '{"num_ctx": 8192}'
             options_dict = json.loads(options_str)
 
             yield "general-"+model+": "
-        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict,is_cat)
 
-    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict) -> \
+    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict, is_cat:bool) -> \
     Generator[str | Any, Any, None]:
         OLLAMA_BASE_URL = base_url
+        print(f"xxxxBODYxxxxxxxxxxxx:{body}")
+        print(f"xxxxRAGCUTxxxxxxxxxx:{self.get_rag(body['messages'][0]['content'])}")
 
-        print(f'000model000:{model}')
-        print(f'111body_ori111:{body}')
-        print(f'222system_prompt222:{system_prompt}')
+        # rag = self.get_rag(body['messages'][0]['content'])
+        # if rag:
+        if is_cat:
+            body['messages'][0]['content'] = system_prompt
+        else:
+            body['messages'][0]['content']=body['messages'][0]['content']
 
-        body['messages'][0]['content'] =system_prompt
+        print(f"xxxxBODY_NEWxxxxxxxxxxxx:{body['messages'][0]['content']}")
+
         payload = {**body, "model": model, "stream": stream, "options": option}
-
-        print(f'333body_modif333:{body}')
 
         try:
             r = requests.post(
@@ -167,3 +177,9 @@ class Pipeline:
                     process_messages([top_message])  # Handle messages that are not nested
 
         return new_json
+
+    def get_rag(self,text):
+        match = re.search(r'###rag_start###(.*?)###rag_end###', text, re.DOTALL)
+        if match:
+            return match.group(1)
+        return None
