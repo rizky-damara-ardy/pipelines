@@ -28,61 +28,73 @@ class Pipeline:
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
-        #for define category
-        model = "qwen2.5:3b-instruct-q4_K_M"
-        prompt = "Tentukan apakah permintaan ini dari pengguna merupakan meminta prediksi atau meminta pengetahuan atau meminta kode atau meminta gambar, jawabannya harus hanya 'prediksi' atau 'pengetahuan' atau 'kode' atau 'gambar' hanya itu."
-        stream = False
-        options_str = '{"temperature": 0.1,"context_length": 8192}'
-        options_dict = json.loads(options_str)
 
-        category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
-
-        # Retrieve the first result from the generator
-        category = next(category_generator)
-
-        category_lower = category.lower() if isinstance(category, str) else category
-
-        if "pengetahuan" in category_lower:
-            model = "qwen2.5:14b-instruct-q4_K_M"
-            prompt = 'You are knowledge base assistant, answer user asking'
-            stream = True
-            options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
+        if body['messages'][0]['content'].startswith('### Task'):
+            # for define category
+            model = "qwen2.5:3b-instruct-q4_K_M"
+            prompt = ""
+            stream = False
+            options_str = '{"temperature": 0.1,"context_length": 8192}'
             options_dict = json.loads(options_str)
 
-            yield "knowledge-"+model+": "
-        elif "prediksi" in category_lower:
-            model = "deepseek-r1:14b"
-            prompt = 'You are prediction base assistant, answer user asking'
-            stream = True
-            options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
-            options_dict = json.loads(options_str)
-
-            yield "prediction-"+model+": "
-        elif "kode" in category_lower:
-            model = "deepseek-coder-v2:16b"
-            prompt = 'You are code base assistant, answer user asking'
-            stream = True
-            options_str = '{"num_ctx": 8192}'
-            options_dict = json.loads(options_str)
-
-            yield "code-"+model+": "
-        elif "gambar" in category_lower:
-            model = "gemma3:27b"
-            prompt = 'You are image base assistant, answer user asking'
-            stream = True
-            options_str = '{"temperature": 0.5}'
-            options_dict = json.loads(options_str)
-
-            yield "image-" + model + ": "
+            yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model, prompt,
+                                           stream, options_dict)
         else:
-            model = "qwen2.5:14b-instruct-q4_K_M"
-            prompt = 'You are knowledge base assistant, answer user asking'
-            stream = True
-            options_str = '{"num_ctx": 8192}'
+            #for define category
+            model = "qwen2.5:3b-instruct-q4_K_M"
+            prompt = "Tentukan apakah permintaan ini dari pengguna merupakan meminta prediksi atau meminta pengetahuan atau meminta kode atau meminta gambar, jawabannya harus hanya 'prediksi' atau 'pengetahuan' atau 'kode' atau 'gambar' hanya itu."
+            stream = False
+            options_str = '{"temperature": 0.1,"context_length": 8192}'
             options_dict = json.loads(options_str)
 
-            yield "general-"+model+": "
-        yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+            category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+
+            # Retrieve the first result from the generator
+            category = next(category_generator)
+
+            category_lower = category.lower() if isinstance(category, str) else category
+
+            if "pengetahuan" in category_lower:
+                model = "qwen2.5:14b-instruct-q4_K_M"
+                prompt = 'You are knowledge base assistant, answer user asking'
+                stream = False
+                options_str = '{"temperature": 0.2,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
+                options_dict = json.loads(options_str)
+
+                yield "knowledge-"+model+": "
+            elif "prediksi" in category_lower:
+                model = "deepseek-r1:14b"
+                prompt = 'You are prediction base assistant, answer user asking'
+                stream = False
+                options_str = '{"temperature": 0.5,"frequency_penalty": 0.2, "presence_penalty": 0.2, "num_ctx": 8192}'
+                options_dict = json.loads(options_str)
+
+                yield "prediction-"+model+": "
+            elif "kode" in category_lower:
+                model = "deepseek-coder-v2:16b"
+                prompt = 'You are code base assistant, answer user asking'
+                stream = False
+                options_str = '{"num_ctx": 8192}'
+                options_dict = json.loads(options_str)
+
+                yield "code-"+model+": "
+            elif "gambar" in category_lower:
+                model = "gemma3:27b"
+                prompt = 'You are image base assistant, answer user asking'
+                stream = False
+                options_str = '{"temperature": 0.5}'
+                options_dict = json.loads(options_str)
+
+                yield "image-" + model + ": "
+            else:
+                model = "qwen2.5:14b-instruct-q4_K_M"
+                prompt = 'You are knowledge base assistant, answer user asking'
+                stream = False
+                options_str = '{"num_ctx": 8192}'
+                options_dict = json.loads(options_str)
+
+                yield "general-"+model+": "
+            yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
 
     def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict) -> \
     Generator[str | Any, Any, None]:
@@ -92,7 +104,12 @@ class Pipeline:
         print(f'111body_ori111:{body}')
         print(f'222system_prompt222:{system_prompt}')
 
-        body['messages'][0]['content'] =system_prompt
+        if system_prompt != "":
+            if body['messages'][0]['role'] == 'system':
+                body['messages'][0]['content'] = system_prompt
+            else:
+                body['messages'].insert(0, {'role': 'system', 'content': system_prompt})
+
         payload = {**body, "model": model, "stream": stream, "options": option}
 
         print(f'333body_modif333:{body}')
@@ -110,6 +127,7 @@ class Pipeline:
                     response_data = json.loads(json_line)
                     content = response_data.get('message', {}).get('content', '')
                     if content:
+                        print(f'444content444:{content}')
                         yield content  # Stream the content
         except Exception as e:
             yield f"Error: {e}"
