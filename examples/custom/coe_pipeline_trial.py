@@ -2,6 +2,7 @@ from typing import List, Union, Generator, Iterator, Any
 from schemas import OpenAIChatMessage
 import requests
 import json
+import copy
 
 
 class Pipeline:
@@ -28,6 +29,12 @@ class Pipeline:
         print(f"pipe:{__name__}")
         OLLAMA_BASE_URL = "http://host.docker.internal:11434"
 
+        body_other = copy.deepcopy(body)
+        body_cat = copy.deepcopy(body)
+        body_llm = copy.deepcopy(body)
+
+        print(f'---body_ori_before---:{body}')
+
         if body['messages'][0]['content'].startswith('### Task'):
             # for define category
             model = "qwen2.5:3b-instruct-q4_K_M"
@@ -36,7 +43,7 @@ class Pipeline:
             options_str = '{"temperature": 0.1,"context_length": 8192}'
             options_dict = json.loads(options_str)
 
-            yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model, prompt,
+            yield from self.send_request_and_stream(user_message, body_other, OLLAMA_BASE_URL, model, prompt,
                                            stream, options_dict)
         else:
             #for define category
@@ -46,7 +53,7 @@ class Pipeline:
             options_str = '{"temperature": 0.1,"context_length": 8192}'
             options_dict = json.loads(options_str)
 
-            category_generator = self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+            category_generator = self.send_request_and_stream(user_message, body_cat, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
 
             # Retrieve the first result from the generator
             category = next(category_generator)
@@ -92,7 +99,7 @@ class Pipeline:
                 options_dict = json.loads(options_str)
 
                 yield "general-"+model+": "
-            yield from self.send_request_and_stream(user_message, body, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+            yield from self.send_request_and_stream(user_message, body_llm, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
 
     def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict) -> \
     Generator[str | Any, Any, None]:
