@@ -44,7 +44,7 @@ class Pipeline:
             options_dict = json.loads(options_str)
 
             yield from self.send_request_and_stream(user_message, body_other, OLLAMA_BASE_URL, model, prompt,
-                                           stream, options_dict)
+                                           stream, options_dict,False)
         else:
             #for define category
             model = "qwen2.5:14b-instruct-q4_K_M"
@@ -53,7 +53,7 @@ class Pipeline:
             options_str = '{"temperature": 0.1,"context_length": 8192}'
             options_dict = json.loads(options_str)
 
-            category_generator = self.send_request_and_stream(user_message, body_cat, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+            category_generator = self.send_request_and_stream(user_message, body_cat, OLLAMA_BASE_URL, model,prompt, stream, options_dict,True)
 
             # Retrieve the first result from the generator
             category = next(category_generator)
@@ -99,9 +99,9 @@ class Pipeline:
                 options_dict = json.loads(options_str)
 
                 yield "general-"+model+": "
-            yield from self.send_request_and_stream(user_message, body_llm, OLLAMA_BASE_URL, model,prompt, stream, options_dict)
+            yield from self.send_request_and_stream(user_message, body_llm, OLLAMA_BASE_URL, model,prompt, stream, options_dict, False)
 
-    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict) -> \
+    def send_request_and_stream(self, user_message: str, body: dict, base_url:str, model: str, system_prompt:str, stream: bool, option: dict, is_cat: bool) -> \
     Generator[str | Any, Any, None]:
         OLLAMA_BASE_URL = base_url
 
@@ -112,7 +112,10 @@ class Pipeline:
         if system_prompt != "":
             if body['messages'][0]['role'] == 'system':
                 if body['messages'][0]['content'].startswith(' ### Task'):
-                    body['messages'][0]['content'] = system_prompt+", "+body['messages'][0]['content']
+                    if is_cat:
+                        body['messages'][0]['content'] = system_prompt
+                    else:
+                        body['messages'][0]['content'] = system_prompt+", "+body['messages'][0]['content']
                 else:
                     body['messages'][0]['content'] = system_prompt
             else:
