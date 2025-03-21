@@ -4,6 +4,11 @@ import requests
 import json
 import copy
 
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import FAISS
+
 
 class Pipeline:
     def __init__(self):
@@ -13,6 +18,33 @@ class Pipeline:
         # The identifier must be an alphanumeric string that can include underscores or hyphens. It cannot contain spaces, special characters, slashes, or backslashes.
         self.id = "coe_private_ai"
         self.name = "COE Private AI"
+
+        # Load the document
+        loader = PyPDFLoader(".//content/got.pdf")
+        documents = loader.load()
+
+        # Split the document into chunks
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=30, separator="\n")
+        docs = text_splitter.split_documents(documents=documents)
+
+        # Load embedding model
+        embedding_model_name = "sentence-transformers/all-mpnet-base-v2"
+        model_kwargs = {"device": "cuda"}
+        embeddings = HuggingFaceEmbeddings(
+            model_name=embedding_model_name,
+            model_kwargs=model_kwargs
+        )
+
+        # Create FAISS vector store
+        vectorstore = FAISS.from_documents(docs, embeddings)
+
+        # Save and reload the vector store
+        vectorstore.save_local("faiss_index_")
+        persisted_vectorstore = FAISS.load_local("faiss_index_", embeddings, allow_dangerous_deserialization=True)
+
+        # Create a retriever
+        retriever = persisted_vectorstore.as_retriever()
+
         pass
 
     async def on_startup(self):
