@@ -20,7 +20,7 @@ class Pipeline:
         self.name = "COE Private AI"
 
         # Load the document
-        loader = PyPDFLoader(".//content/got.pdf")
+        loader = PyPDFLoader("./doc/doc.pdf")
         documents = loader.load()
 
         # Split the document into chunks

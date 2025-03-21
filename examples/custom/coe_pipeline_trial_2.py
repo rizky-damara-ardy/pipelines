@@ -17,7 +17,7 @@ class Pipeline:
         self.name = "COE Private AI"
 
         # Ingest Document
-        self.ingest_documents("./document.txt")
+        self.ingest_documents("./doc/doc-txt.txt")
 
         # Load local embeddings model
         self.embedding_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
